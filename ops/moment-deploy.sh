@@ -18,9 +18,9 @@ healthcheck()
 
     for attempt in $(seq 1 20)
     do
-        if docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" ps --status running web \
+        if docker compose -f "${COMPOSE_FILE}" ps --status running web \
             | grep -q web \
-            && docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" exec -T web \
+            && docker compose -f "${COMPOSE_FILE}" exec -T web \
                 curl --fail --silent http://localhost:8000/healthz >/dev/null
         then
             return 0
@@ -33,6 +33,7 @@ healthcheck()
 }
 
 cd "${REPO_DIR}"
+export MOMENT_ENV_FILE="${ENV_FILE}"
 
 if ! git diff --quiet || ! git diff --cached --quiet
 then
@@ -52,7 +53,7 @@ fi
 log "Deploying ${target_commit} (previously ${previous_commit})."
 git reset --hard "${target_commit}"
 
-if docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" up -d --build --remove-orphans \
+if docker compose -f "${COMPOSE_FILE}" up -d --build --remove-orphans \
     && healthcheck
 then
     log "Deployment of ${target_commit} is healthy."
@@ -61,7 +62,7 @@ fi
 
 log "Deployment failed health checks; rolling back to ${previous_commit}."
 git reset --hard "${previous_commit}"
-docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" up -d --build --remove-orphans
+docker compose -f "${COMPOSE_FILE}" up -d --build --remove-orphans
 
 if healthcheck
 then
