@@ -9,4 +9,4 @@ Type=oneshot
 User=moment
 Group=moment
 Environment=MOMENT_ENV_FILE=/etc/moment/backend.env
-ExecStart=/usr/local/sbin/moment-deploy
+ExecStart=/bin/bash /opt/moment/ops/moment-deploy.sh
