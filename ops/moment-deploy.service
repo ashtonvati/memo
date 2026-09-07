@@ -1,0 +1,12 @@
+[Unit]
+Description=Deploy Moment from the approved main branch
+Wants=network-online.target
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=moment
+Group=moment
+Environment=MOMENT_ENV_FILE=/etc/moment/backend.env
+ExecStart=/usr/local/sbin/moment-deploy

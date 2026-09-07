@@ -1,0 +1,11 @@
+[Unit]
+Description=Poll Moment main branch for approved deployments
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=5min
+Persistent=true
+Unit=moment-deploy.service
+
+[Install]
+WantedBy=timers.target

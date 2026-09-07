@@ -25,6 +25,17 @@ in DHCP. Keep the device upload token configured even on a trusted LAN.
 The `moment-data` volume contains both `moment.db` and the `audio/` directory.
 Back up that volume together; neither is useful on its own.
 
+## Managed deployment
+
+`ops/` contains a deliberately limited deployment controller for a dedicated
+LXC. It polls GitHub `main` every five minutes, rebuilds the Compose stack only
+when a new commit is available, verifies `/healthz`, and restores the previous
+commit if that check fails. It has no AI access and does not edit source code.
+
+Install the runtime configuration as `/etc/moment/backend.env` from
+`ops/backend.env.example`. The controller's `moment` user needs a read-only
+GitHub deploy key for this repository before running `ops/bootstrap-lxc.sh`.
+
 ## Device setup
 
 Copy `hardware/include/secrets.example.h` to `hardware/include/secrets.h` and
