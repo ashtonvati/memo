@@ -2,8 +2,7 @@
 Description=Poll Moment main branch for approved deployments
 
 [Timer]
-OnBootSec=3min
-OnUnitActiveSec=5min
+OnCalendar=*:0/5
 Persistent=true
 Unit=moment-deploy.service
 
