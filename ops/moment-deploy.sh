@@ -47,7 +47,12 @@ target_commit="$(git rev-parse origin/main)"
 
 if [ "${previous_commit}" = "${target_commit}" ]
 then
-    exit 0
+    if healthcheck
+    then
+        exit 0
+    fi
+
+    log "Current commit is not healthy; reconciling ${target_commit}."
 fi
 
 log "Deploying ${target_commit} (previously ${previous_commit})."
