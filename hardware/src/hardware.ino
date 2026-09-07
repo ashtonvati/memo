@@ -3,22 +3,28 @@
 #include <SD.h>
 #include <ESP_I2S.h>
 #include <FastLED.h>
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <mbedtls/sha256.h>
+
+#include "../include/pinout.h"
+#include "../include/secrets.h"
 
 // ============================================================
 // PINS
 // ============================================================
 
-constexpr int SD_CS   = 13;
-constexpr int SD_MOSI = 12;
-constexpr int SD_SCK  = 11;
-constexpr int SD_MISO = 10;
+constexpr int SD_CS   = PIN_SD_CS;
+constexpr int SD_MOSI = PIN_SD_MOSI;
+constexpr int SD_SCK  = PIN_SD_CLK;
+constexpr int SD_MISO = PIN_SD_MISO;
 
-constexpr int I2S_BCLK = 2;
-constexpr int I2S_WS   = 3;
-constexpr int I2S_DIN  = 1;
+constexpr int I2S_BCLK = PIN_MIC_SCK;
+constexpr int I2S_WS   = PIN_MIC_WS;
+constexpr int I2S_DIN  = PIN_MIC_DOUT;
 
-constexpr int BUTTON_PIN = 6;
-constexpr int LED_PIN = 21;
+constexpr int BUTTON_PIN = PIN_BUTTON;
+constexpr int LED_PIN = PIN_LED_WS2812;
 
 
 // ============================================================
@@ -59,6 +65,13 @@ bool isRecording = false;
 
 uint32_t recordingNumber = 0;
 uint32_t dataBytesWritten = 0;
+
+constexpr unsigned long WIFI_RETRY_INTERVAL_MS = 30000;
+constexpr unsigned long WIFI_CONNECT_TIMEOUT_MS = 10000;
+constexpr unsigned long UPLOAD_RESPONSE_TIMEOUT_MS = 15000;
+constexpr size_t UPLOAD_BUFFER_BYTES = 1024;
+
+unsigned long lastWifiAttemptMs = 0;
 
 
 // ============================================================
@@ -133,6 +146,226 @@ void updateWavHeader(File &file)
     // Actual audio data size
     file.seek(40);
     writeLE32(file, dataBytesWritten);
+}
+
+
+// ============================================================
+// WIFI AND UPLOAD
+// ============================================================
+
+bool connectToNetwork(const char *ssid, const char *password)
+{
+    WiFi.begin(ssid, password);
+
+    unsigned long startedAt = millis();
+
+    while (WiFi.status() != WL_CONNECTED)
+    {
+        if (millis() - startedAt >= WIFI_CONNECT_TIMEOUT_MS)
+        {
+            return false;
+        }
+
+        delay(100);
+    }
+
+    return true;
+}
+
+
+bool connectToKnownNetwork()
+{
+    if (WiFi.status() == WL_CONNECTED)
+    {
+        return true;
+    }
+
+    setLED(CRGB::Cyan);
+    WiFi.disconnect();
+
+    if (connectToNetwork(HOME_WIFI_SSID, HOME_WIFI_PASSWORD))
+    {
+        return true;
+    }
+
+    setLED(CRGB::Yellow);
+
+    return false;
+}
+
+
+bool calculateSha256(File &file, char *digest, size_t digestSize)
+{
+    if (digestSize < 65)
+    {
+        return false;
+    }
+
+    uint8_t hash[32];
+    uint8_t buffer[UPLOAD_BUFFER_BYTES];
+    mbedtls_sha256_context context;
+    mbedtls_sha256_init(&context);
+
+    if (mbedtls_sha256_starts_ret(&context, 0) != 0)
+    {
+        mbedtls_sha256_free(&context);
+        return false;
+    }
+
+    file.seek(0);
+
+    while (file.available())
+    {
+        size_t bytesRead = file.read(buffer, sizeof(buffer));
+
+        if (bytesRead == 0 || mbedtls_sha256_update_ret(&context, buffer, bytesRead) != 0)
+        {
+            mbedtls_sha256_free(&context);
+            return false;
+        }
+    }
+
+    if (mbedtls_sha256_finish_ret(&context, hash) != 0)
+    {
+        mbedtls_sha256_free(&context);
+        return false;
+    }
+
+    mbedtls_sha256_free(&context);
+
+    for (size_t i = 0; i < sizeof(hash); i++)
+    {
+        snprintf(digest + (i * 2), 3, "%02x", hash[i]);
+    }
+
+    digest[64] = '\0';
+    file.seek(0);
+
+    return true;
+}
+
+
+bool uploadFile(File &file, const char *filename)
+{
+    char checksum[65];
+
+    if (!calculateSha256(file, checksum, sizeof(checksum)))
+    {
+        return false;
+    }
+
+    const char boundary[] = "----moment-esp32-boundary";
+    String prefix =
+        String("--") + boundary + "\r\n"
+        "Content-Disposition: form-data; name=\"device_id\"\r\n\r\n" + DEVICE_ID + "\r\n"
+        "--" + boundary + "\r\n"
+        "Content-Disposition: form-data; name=\"filename\"\r\n\r\n" + filename + "\r\n"
+        "--" + boundary + "\r\n"
+        "Content-Disposition: form-data; name=\"sha256\"\r\n\r\n" + checksum + "\r\n"
+        "--" + boundary + "\r\n"
+        "Content-Disposition: form-data; name=\"audio\"; filename=\"" + filename + "\"\r\n"
+        "Content-Type: audio/wav\r\n\r\n";
+    String suffix = String("\r\n--") + boundary + "--\r\n";
+    size_t contentLength = prefix.length() + file.size() + suffix.length();
+
+    WiFiClient client;
+
+    if (!client.connect(API_HOST, API_PORT))
+    {
+        return false;
+    }
+
+    client.printf("POST %s HTTP/1.1\r\n", API_PATH);
+    client.printf("Host: %s\r\n", API_HOST);
+    client.printf("Authorization: Bearer %s\r\n", DEVICE_API_TOKEN);
+    client.printf("Content-Type: multipart/form-data; boundary=%s\r\n", boundary);
+    client.printf("Content-Length: %u\r\n", (unsigned int)contentLength);
+    client.print("Connection: close\r\n\r\n");
+    client.print(prefix);
+
+    uint8_t buffer[UPLOAD_BUFFER_BYTES];
+
+    while (file.available())
+    {
+        size_t bytesRead = file.read(buffer, sizeof(buffer));
+
+        if (bytesRead == 0 || client.write(buffer, bytesRead) != bytesRead)
+        {
+            client.stop();
+            return false;
+        }
+    }
+
+    client.print(suffix);
+
+    unsigned long startedAt = millis();
+
+    while (!client.available())
+    {
+        if (millis() - startedAt >= UPLOAD_RESPONSE_TIMEOUT_MS)
+        {
+            client.stop();
+            return false;
+        }
+
+        delay(10);
+    }
+
+    String statusLine = client.readStringUntil('\n');
+    client.stop();
+
+    return statusLine.indexOf(" 200 ") >= 0 || statusLine.indexOf(" 201 ") >= 0;
+}
+
+
+void syncRecordings()
+{
+    if (!connectToKnownNetwork())
+    {
+        return;
+    }
+
+    File root = SD.open("/");
+
+    if (!root)
+    {
+        return;
+    }
+
+    File file = root.openNextFile();
+
+    while (file)
+    {
+        String path = file.name();
+        bool isWav = !file.isDirectory() && path.endsWith(".wav");
+
+        if (isWav)
+        {
+            setLED(CRGB::Green);
+            bool uploaded = uploadFile(file, path.c_str());
+            file.close();
+
+            if (uploaded)
+            {
+                SD.remove(path.c_str());
+            }
+            else
+            {
+                root.close();
+                setLED(CRGB::Yellow);
+                return;
+            }
+        }
+        else
+        {
+            file.close();
+        }
+
+        file = root.openNextFile();
+    }
+
+    root.close();
+    setLED(CRGB::Yellow);
 }
 
 
@@ -329,6 +562,9 @@ void setup()
 
     setLED(CRGB::Orange);
 
+    WiFi.mode(WIFI_STA);
+    lastWifiAttemptMs = millis() - WIFI_RETRY_INTERVAL_MS;
+
 
     // --------------------------------------------------------
     // BUTTON
@@ -448,5 +684,10 @@ void loop()
     if (isRecording)
     {
         recordAudio();
+    }
+    else if (millis() - lastWifiAttemptMs >= WIFI_RETRY_INTERVAL_MS)
+    {
+        lastWifiAttemptMs = millis();
+        syncRecordings();
     }
 }

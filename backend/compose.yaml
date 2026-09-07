@@ -1,0 +1,25 @@
+services:
+  web:
+    build: .
+    command: python -m moment_backend.web
+    env_file: .env
+    environment:
+      DATA_DIR: /data
+    ports:
+      - "8000:8000"
+    volumes:
+      - moment-data:/data
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: python -m moment_backend.worker
+    env_file: .env
+    environment:
+      DATA_DIR: /data
+    volumes:
+      - moment-data:/data
+    restart: unless-stopped
+
+volumes:
+  moment-data:

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Sign in · Moment{% endblock %}
+{% block content %}
+<section class="login-card">
+    <p class="eyebrow">PRIVATE RECORDER ARCHIVE</p>
+    <h1>Your notes, kept close.</h1>
+    <p>Sign in to revisit recordings and their distilled notes.</p>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}<p class="message {{ category }}">{{ message }}</p>{% endfor %}
+    {% endwith %}
+    <form method="post" class="login-form">
+        <label>Password<input name="password" type="password" required autofocus></label>
+        <button type="submit">Enter archive</button>
+    </form>
+</section>
+{% endblock %}

@@ -1,0 +1,6 @@
+Flask==3.1.0
+SQLAlchemy==2.0.36
+faster-whisper==1.1.0
+requests==2.32.3
+reportlab==4.2.5
+pytest==8.3.4

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Archive · Moment{% endblock %}
+{% block content %}
+<section class="intro">
+    <p class="eyebrow">RECORDING ARCHIVE</p>
+    <h1>Thoughts, with room to breathe.</h1>
+    <p>{{ recordings|length }} recording{{ '' if recordings|length == 1 else 's' }} stored locally.</p>
+</section>
+{% if recordings %}
+<section class="recording-list">
+{% for recording in recordings %}
+    <a class="recording-row" href="{{ url_for('recording_detail', recording_id=recording.id) }}">
+        <div>
+            <p class="date">{{ recording.created_at.strftime('%d %b %Y · %H:%M') }} · {{ recording.device_id }}</p>
+            <h2>{{ recording.original_filename }}</h2>
+            <p class="preview">{{ (recording.transcript or 'Waiting for the recorder worker to begin processing.')[:160] }}</p>
+        </div>
+        <span class="status status-{{ recording.status }}">{{ statuses[recording.status] }}</span>
+    </a>
+{% endfor %}
+</section>
+{% else %}
+<section class="empty-state"><h2>No recordings yet.</h2><p>Connect the recorder to Wi-Fi and it will appear here after upload.</p></section>
+{% endif %}
+{% endblock %}

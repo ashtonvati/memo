@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Recording · Moment{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('index') }}">← Archive</a>
+<section class="detail-head">
+    <p class="eyebrow">{{ recording.created_at.strftime('%d %B %Y · %H:%M') }}</p>
+    <h1>{{ recording.original_filename }}</h1>
+    <span class="status status-{{ recording.status }}">{{ statuses[recording.status] }}</span>
+    {% if recording.error_message %}<p class="message error">{{ recording.error_message }}</p>{% endif %}
+</section>
+<section class="player-card">
+    <audio controls preload="metadata" src="{{ url_for('recording_audio', recording_id=recording.id) }}"></audio>
+    <a href="{{ url_for('recording_audio', recording_id=recording.id) }}" download>Download WAV</a>
+</section>
+<div class="detail-grid">
+    <section class="content-card">
+        <div class="section-title"><p class="eyebrow">TRANSCRIPT</p>{% if recording.transcript %}<a href="{{ url_for('download_transcript', recording_id=recording.id) }}">.txt</a>{% endif %}</div>
+        <div class="prose">{{ recording.transcript or 'The transcript will appear here once processing is complete.' }}</div>
+    </section>
+    <section class="content-card notes">
+        <div class="section-title"><p class="eyebrow">GENERATED NOTES</p>{% if recording.notes_markdown %}<span><a href="{{ url_for('download_notes', recording_id=recording.id) }}">.md</a> <a href="{{ url_for('download_pdf', recording_id=recording.id) }}">.pdf</a></span>{% endif %}</div>
+        <article class="prose markdown">{{ recording.notes_markdown or 'Notes will be generated after transcription.' }}</article>
+    </section>
+</div>
+{% endblock %}
