@@ -2,19 +2,13 @@
 
 ## Project Structure & Module Organization
 
-`hardware/` is the firmware project root. `platformio.ini` configures the ESP32-S3 build, `src/complete_fixed_arduino.ino` contains the recorder logic, `include/pinout.h` is the pin source of truth, and `no_ota.csv` is the firmware partition layout. Treat `docs/pinout.md` as the wiring reference for humans.
+`hardware/` is the firmware project root. `src/hardware.ino` contains the recorder logic, `include/pinout.h` is the pin source of truth, and `docs/pinout.md` is the wiring reference for humans.
 
 ## Build, Test, and Development Commands
 
-Run PlatformIO from `hardware/`:
+Use the Arduino IDE to open and upload `src/hardware.ino`:
 
-```sh
-platformio run
-platformio run --target upload
-platformio device monitor
-```
-
-Use `platformio run` before changing pins, SD behavior, I2S capture, or button logic.
+Use the sketch upload flow before changing pins, SD behavior, I2S capture, or button logic.
 
 ## Coding Style & Naming Conventions
 

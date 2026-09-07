@@ -162,33 +162,23 @@ bool startRecording()
         }
     }
 
-    Serial.print("Creating ");
-    Serial.println(filename);
-
     recordingFile = SD.open(filename, FILE_WRITE);
 
     if (!recordingFile)
     {
-        Serial.println("ERROR: Could not create file");
         setLED(CRGB::Orange);
         return false;
     }
-
-    Serial.println("File created");
 
     dataBytesWritten = 0;
 
     // Write placeholder WAV header
     writeWavHeader(recordingFile);
 
-    Serial.println("WAV header written");
-
     isRecording = true;
 
     // Purple = Standby
     setLED(CRGB::Purple);
-
-    Serial.println("RECORDING");
 
     return true;
 }
@@ -205,8 +195,6 @@ void stopRecording()
         return;
     }
 
-    Serial.println("Stopping...");
-
     // Stop collecting samples
     isRecording = false;
 
@@ -218,10 +206,6 @@ void stopRecording()
 
     // Close file
     recordingFile.close();
-
-    Serial.print("Saved ");
-    Serial.print(dataBytesWritten);
-    Serial.println(" bytes");
 
     // Yellow = Recording
     setLED(CRGB::Yellow);
@@ -335,16 +319,6 @@ void recordAudio()
 
 void setup()
 {
-    Serial.begin(115200);
-
-    delay(1000);
-
-    Serial.println();
-    Serial.println("==============================");
-    Serial.println("ESP32 NOTE RECORDER");
-    Serial.println("==============================");
-
-
     // --------------------------------------------------------
     // LED
     // --------------------------------------------------------
@@ -370,8 +344,6 @@ void setup()
     // SD CARD
     // --------------------------------------------------------
 
-    Serial.println("Initialising SD...");
-
     SPI.begin(
         SD_SCK,
         SD_MISO,
@@ -385,21 +357,15 @@ void setup()
         20000000
     ))
     {
-        Serial.println("ERROR: SD card failed");
-
         setLED(CRGB::Orange);
 
         return;
     }
 
-    Serial.println("SD card OK.");
-
 
     // --------------------------------------------------------
     // I2S
     // --------------------------------------------------------
-
-    Serial.println("Initialising I2S...");
 
     I2S.setPins(
         I2S_BCLK,
@@ -421,15 +387,10 @@ void setup()
 
     if (!i2sStarted)
     {
-        Serial.println("ERROR: I2S failed");
-
         setLED(CRGB::Orange);
 
         return;
     }
-
-    Serial.println("I2S OK.");
-    Serial.println("READY");
 }
 
 

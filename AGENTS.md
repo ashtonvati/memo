@@ -4,7 +4,7 @@
 
 This repo is split into four areas:
 
-- `hardware/` contains the ESP32-S3 firmware, PlatformIO config, and device pin definitions.
+- `hardware/` contains the ESP32-S3 firmware sketch and device pin definitions.
 - `backend/` is reserved for the API, workers, database, and website that will process recordings.
 - `shared/` is for schemas or message contracts used by both sides.
 - `docs/` stores wiring notes and project overview material.
@@ -14,16 +14,7 @@ Use this root file for repo-wide conventions; `hardware/AGENTS.md` and `backend/
 
 ## Build, Test, and Development Commands
 
-Run firmware commands from `hardware/`:
-
-```sh
-platformio run
-platformio run --target upload
-platformio device monitor
-platformio run --target clean
-```
-
-Backend commands will be added under `backend/` when that service is scaffolded. For now, there is no build or test command at the repo root.
+Flash the firmware from the Arduino IDE using `hardware/src/hardware.ino`. Backend commands will be added under `backend/` when that service is scaffolded. For now, there is no build or test command at the repo root.
 
 ## Coding Style & Naming Conventions
 
@@ -31,7 +22,7 @@ Use four-space indentation and Allman-style braces, matching the existing sketch
 
 ## Testing Guidelines
 
-`platformio run` is the baseline firmware check. For device validation, confirm recordings create valid `.wav` files on the SD card and that button, LED, and serial behavior still match the documented flow. When backend code arrives, add unit tests under `backend/tests/`.
+For device validation, confirm recordings create valid `.wav` files on the SD card and that button and LED behavior still match the documented flow. When backend code arrives, add unit tests under `backend/tests/`.
 
 ## Commit & Pull Request Guidelines
 
