@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import io
 import secrets
-from xml.sax.saxutils import escape
 from pathlib import Path
+from xml.sax.saxutils import escape
 
 from flask import Flask, abort, current_app, flash, redirect, render_template, request, send_file, send_from_directory, session, url_for
 from reportlab.lib.pagesizes import A4
@@ -117,6 +117,22 @@ def create_app(config: Config | None = None) -> Flask:
             output, as_attachment=True, download_name=f"{recording_id}-notes.pdf",
             mimetype="application/pdf"
         )
+
+    @app.post("/recordings/<recording_id>/delete")
+    @login_required
+    def delete_recording(recording_id: str):
+        _verify_csrf()
+        session_factory = current_app.config["moment_session_factory"]
+        with session_factory() as database:
+            recording = database.get(Recording, recording_id)
+            if recording is None:
+                abort(404)
+            audio_path = config.audio_dir / recording.audio_path
+            if recording.audio_path and audio_path.is_file():
+                audio_path.unlink()
+            database.delete(recording)
+            database.commit()
+        return redirect(url_for("index"))
 
     @app.post("/api/v1/recordings")
     @device_token_required

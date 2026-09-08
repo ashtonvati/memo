@@ -10,7 +10,13 @@
 </section>
 <section class="player-card">
     <audio controls preload="metadata" src="{{ url_for('recording_audio', recording_id=recording.id) }}"></audio>
-    <a href="{{ url_for('recording_audio', recording_id=recording.id) }}" download>Download WAV</a>
+    <div class="recording-actions">
+        <a href="{{ url_for('recording_audio', recording_id=recording.id) }}" download>Download WAV</a>
+        <form action="{{ url_for('delete_recording', recording_id=recording.id) }}" method="post" onsubmit="return confirm('Delete this recording and its note?');">
+            <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+            <button class="danger" type="submit">Delete</button>
+        </form>
+    </div>
 </section>
 <div class="detail-grid">
     <section class="content-card">

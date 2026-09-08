@@ -9,14 +9,22 @@
 {% if recordings %}
 <section class="recording-list">
 {% for recording in recordings %}
-    <a class="recording-row" href="{{ url_for('recording_detail', recording_id=recording.id) }}">
-        <div>
+    <div class="recording-row">
+        <a class="recording-link" href="{{ url_for('recording_detail', recording_id=recording.id) }}">
+            <div>
             <p class="date">{{ recording.created_at.strftime('%d %b %Y · %H:%M') }} · {{ recording.device_id }}</p>
             <h2>{{ recording.original_filename }}</h2>
             <p class="preview">{{ (recording.transcript or 'Waiting for the recorder worker to begin processing.')[:160] }}</p>
+            </div>
+        </a>
+        <div class="recording-actions archive-actions">
+            <span class="status status-{{ recording.status }}">{{ statuses[recording.status] }}</span>
+            <form action="{{ url_for('delete_recording', recording_id=recording.id) }}" method="post" onsubmit="return confirm('Delete this recording and its note?');">
+                <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+                <button class="danger" type="submit">Delete</button>
+            </form>
         </div>
-        <span class="status status-{{ recording.status }}">{{ statuses[recording.status] }}</span>
-    </a>
+    </div>
 {% endfor %}
 </section>
 {% else %}
