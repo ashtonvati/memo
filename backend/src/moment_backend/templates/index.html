@@ -3,16 +3,30 @@
 {% block content %}
 <section class="workspace">
     <aside class="archive-sidebar">
-        <a class="nav-link {{ 'active' if not selected_folder_id and not selected_tag_id else '' }}" href="{{ url_for('index') }}">All recordings</a>
-        <div class="sidebar-section">
-            <div class="sidebar-heading"><p>FOLDERS</p><details class="add-menu"><summary aria-label="Create folder">+</summary><form action="{{ url_for('create_folder') }}" method="post"><input type="hidden" name="csrf_token" value="{{ session.csrf_token }}"><input name="name" maxlength="80" placeholder="Folder name" required><button type="submit">Add</button></form></details></div>
-            {% for folder in folders %}<div class="sidebar-item"><a class="nav-link {{ 'active' if selected_folder_id == folder.id else '' }}" href="{{ url_for('index', folder=folder.id) }}">{{ folder.name }}</a><details class="item-menu"><summary aria-label="Folder options">•••</summary><form action="{{ url_for('delete_folder', folder_id=folder.id) }}" method="post" onsubmit="return confirm('Remove this folder? Recordings will be kept.');"><input type="hidden" name="csrf_token" value="{{ session.csrf_token }}"><button class="menu-danger" type="submit">Remove folder</button></form></details></div>{% endfor %}
-        </div>
-        <div class="sidebar-section">
-            <div class="sidebar-heading"><p>TAGS</p><details class="add-menu"><summary aria-label="Create tag">+</summary><form action="{{ url_for('create_tag') }}" method="post"><input type="hidden" name="csrf_token" value="{{ session.csrf_token }}"><input name="name" maxlength="80" placeholder="Tag name" required><button type="submit">Add</button></form></details></div>
-            <div class="tag-nav">{% for tag in tags %}<div class="sidebar-item"><a class="tag-chip {{ 'active' if selected_tag_id == tag.id else '' }}" href="{{ url_for('index', tag=tag.id) }}">{{ tag.name }}</a><details class="item-menu"><summary aria-label="Tag options">•••</summary><form action="{{ url_for('delete_tag', tag_id=tag.id) }}" method="post" onsubmit="return confirm('Remove this tag? Recordings will be kept.');"><input type="hidden" name="csrf_token" value="{{ session.csrf_token }}"><button class="menu-danger" type="submit">Remove tag</button></form></details></div>{% endfor %}</div>
-        </div>
+        <p class="sidebar-kicker">YOUR LIBRARY</p>
+        <a class="nav-link all-recordings {{ 'active' if not selected_folder_id and not selected_tag_id else '' }}" href="{{ url_for('index') }}"><span>All recordings</span><span class="nav-arrow">→</span></a>
+
+        <section class="sidebar-section">
+            <div class="sidebar-heading"><p>FOLDERS</p></div>
+            <div class="sidebar-list">
+                {% for folder in folders %}
+                <div class="sidebar-item"><a class="nav-link {{ 'active' if selected_folder_id == folder.id else '' }}" href="{{ url_for('index', folder=folder.id) }}">{{ folder.name }}</a><details class="item-menu"><summary aria-label="Folder options">•••</summary><form action="{{ url_for('delete_folder', folder_id=folder.id) }}" method="post" onsubmit="return confirm('Remove this folder? Recordings will be kept.');"><input type="hidden" name="csrf_token" value="{{ session.csrf_token }}"><button class="menu-danger" type="submit">Remove folder</button></form></details></div>
+                {% endfor %}
+            </div>
+            <details class="add-composer"><summary><span>New folder</span><span class="add-icon">+</span></summary><form action="{{ url_for('create_folder') }}" method="post"><input type="hidden" name="csrf_token" value="{{ session.csrf_token }}"><input name="name" maxlength="80" placeholder="e.g. Work" required><button type="submit">Create folder</button></form></details>
+        </section>
+
+        <section class="sidebar-section">
+            <div class="sidebar-heading"><p>TAGS</p><span>Click again to clear</span></div>
+            <div class="tag-nav">
+                {% for tag in tags %}
+                <div class="sidebar-item"><a class="tag-chip {{ 'active' if selected_tag_id == tag.id else '' }}" href="{{ url_for('index', q=search or none, status=selected_status or none, folder=selected_folder_id, tag=none if selected_tag_id == tag.id else tag.id) }}">{{ tag.name }}</a><details class="item-menu"><summary aria-label="Tag options">•••</summary><form action="{{ url_for('delete_tag', tag_id=tag.id) }}" method="post" onsubmit="return confirm('Remove this tag? Recordings will be kept.');"><input type="hidden" name="csrf_token" value="{{ session.csrf_token }}"><button class="menu-danger" type="submit">Remove tag</button></form></details></div>
+                {% endfor %}
+            </div>
+            <details class="add-composer"><summary><span>New tag</span><span class="add-icon">+</span></summary><form action="{{ url_for('create_tag') }}" method="post"><input type="hidden" name="csrf_token" value="{{ session.csrf_token }}"><input name="name" maxlength="80" placeholder="e.g. Follow up" required><button type="submit">Create tag</button></form></details>
+        </section>
     </aside>
+
     <div class="archive-content">
         <section class="intro compact-intro"><p class="eyebrow">RECORDING ARCHIVE</p><h1>Clear space for your thinking.</h1><p>{{ recordings|length }} matching recording{{ '' if recordings|length == 1 else 's' }}.</p></section>
         <form class="filter-bar" method="get"><input type="search" name="q" value="{{ search }}" placeholder="Search titles and transcripts" aria-label="Search recordings"><select name="status" aria-label="Filter by status"><option value="">All statuses</option>{% for key, label in statuses.items() %}<option value="{{ key }}" {{ 'selected' if selected_status == key else '' }}>{{ label }}</option>{% endfor %}</select>{% if selected_folder_id %}<input type="hidden" name="folder" value="{{ selected_folder_id }}">{% endif %}{% if selected_tag_id %}<input type="hidden" name="tag" value="{{ selected_tag_id }}">{% endif %}<button type="submit">Filter</button>{% if search or selected_status or selected_folder_id or selected_tag_id %}<a class="clear-filter" href="{{ url_for('index') }}">Clear</a>{% endif %}</form>

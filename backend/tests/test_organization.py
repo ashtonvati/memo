@@ -25,7 +25,9 @@ def test_recordings_can_be_organized_searched_and_renamed(tmp_path):
     with client.session_transaction() as flask_session:
         csrf_token = flask_session["csrf_token"]
 
-    assert b"Prepare project brief" in client.get("/?q=customer&tag=" + str(tag_id)).data
+    selected_tag_page = client.get("/?q=customer&tag=" + str(tag_id))
+    assert b"Prepare project brief" in selected_tag_page.data
+    assert b'href="/?q=customer"' in selected_tag_page.data
     assert client.post(
         f"/recordings/{recording_id}/title",
         data={"csrf_token": csrf_token, "title": "Customer interview actions"},
