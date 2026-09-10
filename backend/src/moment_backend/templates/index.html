@@ -1,33 +1,22 @@
 {% extends "base.html" %}
 {% block title %}Archive · Moment{% endblock %}
 {% block content %}
-<section class="intro">
-    <p class="eyebrow">RECORDING ARCHIVE</p>
-    <h1>Thoughts, with room to breathe.</h1>
-    <p>{{ recordings|length }} recording{{ '' if recordings|length == 1 else 's' }} stored locally.</p>
-</section>
-{% if recordings %}
-<section class="recording-list">
-{% for recording in recordings %}
-    <div class="recording-row">
-        <a class="recording-link" href="{{ url_for('recording_detail', recording_id=recording.id) }}">
-            <div>
-            <p class="date">{{ recording.created_at.strftime('%d %b %Y · %H:%M') }} · {{ recording.device_id }}</p>
-            <h2>{{ recording.original_filename }}</h2>
-            <p class="preview">{{ (recording.transcript or 'Waiting for the recorder worker to begin processing.')[:160] }}</p>
-            </div>
-        </a>
-        <div class="recording-actions archive-actions">
-            <span class="status status-{{ recording.status }}">{{ statuses[recording.status] }}</span>
-            <form action="{{ url_for('delete_recording', recording_id=recording.id) }}" method="post" onsubmit="return confirm('Delete this recording and its note?');">
-                <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
-                <button class="danger" type="submit">Delete</button>
-            </form>
+<section class="workspace">
+    <aside class="archive-sidebar">
+        <a class="nav-link {{ 'active' if not selected_folder_id and not selected_tag_id else '' }}" href="{{ url_for('index') }}">All recordings</a>
+        <div class="sidebar-section">
+            <div class="sidebar-heading"><p>FOLDERS</p><details class="add-menu"><summary aria-label="Create folder">+</summary><form action="{{ url_for('create_folder') }}" method="post"><input type="hidden" name="csrf_token" value="{{ session.csrf_token }}"><input name="name" maxlength="80" placeholder="Folder name" required><button type="submit">Add</button></form></details></div>
+            {% for folder in folders %}<div class="sidebar-item"><a class="nav-link {{ 'active' if selected_folder_id == folder.id else '' }}" href="{{ url_for('index', folder=folder.id) }}">{{ folder.name }}</a><details class="item-menu"><summary aria-label="Folder options">•••</summary><form action="{{ url_for('delete_folder', folder_id=folder.id) }}" method="post" onsubmit="return confirm('Remove this folder? Recordings will be kept.');"><input type="hidden" name="csrf_token" value="{{ session.csrf_token }}"><button class="menu-danger" type="submit">Remove folder</button></form></details></div>{% endfor %}
         </div>
+        <div class="sidebar-section">
+            <div class="sidebar-heading"><p>TAGS</p><details class="add-menu"><summary aria-label="Create tag">+</summary><form action="{{ url_for('create_tag') }}" method="post"><input type="hidden" name="csrf_token" value="{{ session.csrf_token }}"><input name="name" maxlength="80" placeholder="Tag name" required><button type="submit">Add</button></form></details></div>
+            <div class="tag-nav">{% for tag in tags %}<div class="sidebar-item"><a class="tag-chip {{ 'active' if selected_tag_id == tag.id else '' }}" href="{{ url_for('index', tag=tag.id) }}">{{ tag.name }}</a><details class="item-menu"><summary aria-label="Tag options">•••</summary><form action="{{ url_for('delete_tag', tag_id=tag.id) }}" method="post" onsubmit="return confirm('Remove this tag? Recordings will be kept.');"><input type="hidden" name="csrf_token" value="{{ session.csrf_token }}"><button class="menu-danger" type="submit">Remove tag</button></form></details></div>{% endfor %}</div>
+        </div>
+    </aside>
+    <div class="archive-content">
+        <section class="intro compact-intro"><p class="eyebrow">RECORDING ARCHIVE</p><h1>Clear space for your thinking.</h1><p>{{ recordings|length }} matching recording{{ '' if recordings|length == 1 else 's' }}.</p></section>
+        <form class="filter-bar" method="get"><input type="search" name="q" value="{{ search }}" placeholder="Search titles and transcripts" aria-label="Search recordings"><select name="status" aria-label="Filter by status"><option value="">All statuses</option>{% for key, label in statuses.items() %}<option value="{{ key }}" {{ 'selected' if selected_status == key else '' }}>{{ label }}</option>{% endfor %}</select>{% if selected_folder_id %}<input type="hidden" name="folder" value="{{ selected_folder_id }}">{% endif %}{% if selected_tag_id %}<input type="hidden" name="tag" value="{{ selected_tag_id }}">{% endif %}<button type="submit">Filter</button>{% if search or selected_status or selected_folder_id or selected_tag_id %}<a class="clear-filter" href="{{ url_for('index') }}">Clear</a>{% endif %}</form>
+        {% if recordings %}<section class="recording-list">{% for recording in recordings %}<article class="recording-row"><a class="recording-link" href="{{ url_for('recording_detail', recording_id=recording.id) }}"><div><h2>{{ display_title(recording) }}</h2><p class="recording-meta">{{ recording.created_at.strftime('%d %b %Y · %H:%M') }} <span>·</span> {{ recording.duration_ms|duration }}</p><div class="recording-labels">{% if recording.folder %}<span class="folder-label">{{ recording.folder.name }}</span>{% endif %}{% for tag in recording.tags %}<span class="tag-chip">{{ tag.name }}</span>{% endfor %}</div><p class="preview">{{ (recording.transcript or 'Waiting for the recorder worker to begin processing.')[:160] }}</p></div></a><div class="archive-actions"><span class="status status-{{ recording.status }}">{{ statuses[recording.status] }}</span><details class="item-menu"><summary aria-label="Recording options">•••</summary><form action="{{ url_for('delete_recording', recording_id=recording.id) }}" method="post" onsubmit="return confirm('Delete this recording and its note?');"><input type="hidden" name="csrf_token" value="{{ session.csrf_token }}"><button class="menu-danger" type="submit">Delete recording</button></form></details></div></article>{% endfor %}</section>{% else %}<section class="empty-state"><h2>No matching recordings.</h2><p>Try a different filter, or connect the recorder to Wi-Fi to add a new one.</p></section>{% endif %}
     </div>
-{% endfor %}
 </section>
-{% else %}
-<section class="empty-state"><h2>No recordings yet.</h2><p>Connect the recorder to Wi-Fi and it will appear here after upload.</p></section>
-{% endif %}
 {% endblock %}

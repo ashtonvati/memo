@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+from dataclasses import dataclass
 from pathlib import Path
 
 import requests
@@ -7,6 +9,12 @@ import requests
 
 class ProcessingError(RuntimeError):
     pass
+
+
+@dataclass(frozen=True)
+class GeneratedRecording:
+    title: str
+    notes_markdown: str
 
 
 class Transcriber:
@@ -34,7 +42,7 @@ class OpenRouterNotesGenerator:
         self.site_url = site_url
         self.app_title = app_title
 
-    def generate(self, transcript: str) -> str:
+    def generate(self, transcript: str) -> GeneratedRecording:
         if not self.api_key:
             raise ProcessingError("OpenRouter is not configured. Set OPENROUTER_API_KEY.")
         if not self.model:
@@ -48,8 +56,9 @@ class OpenRouterNotesGenerator:
             headers["HTTP-Referer"] = self.site_url
         prompt = (
             "Turn this voice-note transcript into concise, useful Markdown notes. "
-            "Use a title, a short summary, action items when present, and key details. "
-            "Do not invent facts.\n\nTranscript:\n" + transcript
+            "Create a factual 3 to 7 word title that helps its owner recognize the note at a glance. "
+            "Write a short summary, action items when present, and key details in notes_markdown. "
+            "Do not invent facts and do not duplicate the title as a Markdown heading.\n\nTranscript:\n" + transcript
         )
         try:
             response = requests.post(
@@ -58,15 +67,34 @@ class OpenRouterNotesGenerator:
                 json={
                     "model": self.model,
                     "messages": [{"role": "user", "content": prompt}],
+                    "response_format": {
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "recording_notes",
+                            "strict": True,
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {"type": "string"},
+                                    "notes_markdown": {"type": "string"},
+                                },
+                                "required": ["title", "notes_markdown"],
+                                "additionalProperties": False,
+                            },
+                        },
+                    },
                 },
                 timeout=300,
             )
             response.raise_for_status()
-            notes = response.json()["choices"][0]["message"]["content"].strip()
+            content = response.json()["choices"][0]["message"]["content"]
+            generated = json.loads(content)
         except requests.RequestException as error:
             raise ProcessingError(f"OpenRouter request failed: {error}") from error
-        except (KeyError, IndexError, TypeError, AttributeError) as error:
+        except (KeyError, IndexError, TypeError, AttributeError, json.JSONDecodeError) as error:
             raise ProcessingError("OpenRouter returned an invalid completion response.") from error
-        if not notes:
+        title = " ".join(str(generated.get("title", "")).split())
+        notes = str(generated.get("notes_markdown", "")).strip()
+        if not notes or not title or not 3 <= len(title.split()) <= 7 or len(title) > 100:
             raise ProcessingError("OpenRouter returned no generated notes.")
-        return notes
+        return GeneratedRecording(title=title, notes_markdown=notes)

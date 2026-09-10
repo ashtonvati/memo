@@ -3,8 +3,8 @@
 {% block content %}
 <section class="login-card">
     <p class="eyebrow">PRIVATE RECORDER ARCHIVE</p>
-    <h1>Your notes, kept close.</h1>
-    <p>Sign in to revisit recordings and their distilled notes.</p>
+    <h1>Your ideas, organized.</h1>
+    <p>Sign in to review recordings, transcripts, and notes.</p>
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% for category, message in messages %}<p class="message {{ category }}">{{ message }}</p>{% endfor %}
     {% endwith %}

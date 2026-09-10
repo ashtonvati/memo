@@ -6,7 +6,7 @@ import time
 from sqlalchemy import update
 
 from .config import Config
-from .database import Base, create_database
+from .database import Base, apply_migrations, create_database
 from .models import Recording
 from .services import OpenRouterNotesGenerator, Transcriber
 
@@ -50,10 +50,11 @@ def process_recording(recording_id: str, config: Config, session_factory, transc
             recording.transcript = transcript
             recording.status = "generating_notes"
             database.commit()
-        notes = notes_generator.generate(transcript)
+        generated = notes_generator.generate(transcript)
         with session_factory() as database:
             recording = database.get(Recording, recording_id)
-            recording.notes_markdown = notes
+            recording.title = generated.title
+            recording.notes_markdown = generated.notes_markdown
             recording.status = "completed"
             database.commit()
     except Exception as error:
@@ -71,6 +72,7 @@ def main() -> None:
     config.audio_dir.mkdir(parents=True, exist_ok=True)
     engine, session_factory = create_database(config.database_url)
     Base.metadata.create_all(engine)
+    apply_migrations(engine)
     recover_interrupted_jobs(session_factory)
     transcriber = Transcriber(config.whisper_model, config.whisper_device, config.whisper_compute_type)
     notes_generator = OpenRouterNotesGenerator(

@@ -1,31 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Recording · Moment{% endblock %}
+{% block title %}{{ display_title(recording) }} · Moment{% endblock %}
 {% block content %}
 <a class="back" href="{{ url_for('index') }}">← Archive</a>
-<section class="detail-head">
-    <p class="eyebrow">{{ recording.created_at.strftime('%d %B %Y · %H:%M') }}</p>
-    <h1>{{ recording.original_filename }}</h1>
-    <span class="status status-{{ recording.status }}">{{ statuses[recording.status] }}</span>
-    {% if recording.error_message %}<p class="message error">{{ recording.error_message }}</p>{% endif %}
-</section>
-<section class="player-card">
-    <audio controls preload="metadata" src="{{ url_for('recording_audio', recording_id=recording.id) }}"></audio>
-    <div class="recording-actions">
-        <a href="{{ url_for('recording_audio', recording_id=recording.id) }}" download>Download WAV</a>
-        <form action="{{ url_for('delete_recording', recording_id=recording.id) }}" method="post" onsubmit="return confirm('Delete this recording and its note?');">
-            <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
-            <button class="danger" type="submit">Delete</button>
-        </form>
-    </div>
-</section>
-<div class="detail-grid">
-    <section class="content-card">
-        <div class="section-title"><p class="eyebrow">TRANSCRIPT</p>{% if recording.transcript %}<a href="{{ url_for('download_transcript', recording_id=recording.id) }}">.txt</a>{% endif %}</div>
-        <div class="prose">{{ recording.transcript or 'The transcript will appear here once processing is complete.' }}</div>
-    </section>
-    <section class="content-card notes">
-        <div class="section-title"><p class="eyebrow">GENERATED NOTES</p>{% if recording.notes_markdown %}<span><a href="{{ url_for('download_notes', recording_id=recording.id) }}">.md</a> <a href="{{ url_for('download_pdf', recording_id=recording.id) }}">.pdf</a></span>{% endif %}</div>
-        <article class="prose markdown">{{ recording.notes_markdown or 'Notes will be generated after transcription.' }}</article>
-    </section>
-</div>
+<section class="detail-head"><p class="eyebrow">{{ recording.created_at.strftime('%d %B %Y · %H:%M') }} · {{ recording.duration_ms|duration }}</p><div class="title-line"><h1>{{ display_title(recording) }}</h1><details class="title-editor"><summary>Edit title</summary><form action="{{ url_for('update_title', recording_id=recording.id) }}" method="post"><input type="hidden" name="csrf_token" value="{{ session.csrf_token }}"><input name="title" maxlength="100" value="{{ display_title(recording) }}" required><button type="submit">Save</button></form></details></div><span class="status status-{{ recording.status }}">{{ statuses[recording.status] }}</span>{% if recording.error_message %}<p class="message error">{{ recording.error_message }}</p>{% endif %}</section>
+<section class="player-card"><audio controls preload="metadata" src="{{ url_for('recording_audio', recording_id=recording.id) }}"></audio><a class="button-link" href="{{ url_for('download_audio', recording_id=recording.id) }}">Download WAV</a></section>
+<section class="content-card organize-card"><div class="section-title"><p class="eyebrow">ORGANIZE</p></div><form action="{{ url_for('update_organization', recording_id=recording.id) }}" method="post" class="organize-form"><input type="hidden" name="csrf_token" value="{{ session.csrf_token }}"><label>Folder<select name="folder_id"><option value="">No folder</option>{% for folder in folders %}<option value="{{ folder.id }}" {{ 'selected' if recording.folder_id == folder.id else '' }}>{{ folder.name }}</option>{% endfor %}</select></label><fieldset><legend>Tags</legend><div class="tag-options">{% for tag in tags %}<label class="tag-toggle"><input type="checkbox" name="tag_ids" value="{{ tag.id }}" {{ 'checked' if tag.id in selected_tag_ids else '' }}><span>{{ tag.name }}</span></label>{% endfor %}{% if not tags %}<p class="muted">Create tags from the archive sidebar.</p>{% endif %}</div></fieldset><button type="submit">Save organisation</button></form></section>
+<div class="detail-grid"><section class="content-card"><div class="section-title"><p class="eyebrow">TRANSCRIPT</p>{% if recording.transcript %}<a href="{{ url_for('download_transcript', recording_id=recording.id) }}">.txt</a>{% endif %}</div><div class="prose">{{ recording.transcript or 'The transcript will appear here once processing is complete.' }}</div></section><section class="content-card notes"><div class="section-title"><p class="eyebrow">GENERATED NOTES</p>{% if recording.notes_markdown %}<span><a href="{{ url_for('download_notes', recording_id=recording.id) }}">.md</a> <a href="{{ url_for('download_pdf', recording_id=recording.id) }}">.pdf</a></span>{% endif %}</div><article class="prose markdown">{{ recording.notes_markdown or 'Notes will be generated after transcription.' }}</article></section></div>
+<section class="danger-zone"><details><summary>Recording options</summary><form action="{{ url_for('delete_recording', recording_id=recording.id) }}" method="post" onsubmit="return confirm('Delete this recording and its note?');"><input type="hidden" name="csrf_token" value="{{ session.csrf_token }}"><button class="menu-danger" type="submit">Delete recording</button></form></details></section>
 {% endblock %}

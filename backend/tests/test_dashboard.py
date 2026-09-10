@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from moment_backend.app import create_app
-from moment_backend.models import Recording
+from moment_backend.models import Folder, Recording, Tag
 from conftest import make_config
 
 
@@ -15,8 +15,13 @@ def test_dashboard_requires_login_and_serves_exports(tmp_path):
         recording = Recording(
             device_id="moment-001", original_filename="complete.wav", sha256="b" * 64,
             audio_path="complete.wav", status="completed", transcript="Transcript",
-            notes_markdown="# Notes\n\n- <keep this safe>"
+            notes_markdown="# Notes\n\n- <keep this safe>", title="Complete weekly review",
+            duration_ms=65_000,
         )
+        folder = Folder(name="Work", normalized_name="work")
+        tag = Tag(name="Review", normalized_name="review")
+        recording.folder = folder
+        recording.tags = [tag]
         database.add(recording)
         database.commit()
         recording_id = recording.id
@@ -27,7 +32,13 @@ def test_dashboard_requires_login_and_serves_exports(tmp_path):
     with client.session_transaction() as flask_session:
         csrf_token = flask_session["csrf_token"]
     assert client.get(f"/recordings/{recording_id}").status_code == 200
+    archive = client.get("/")
+    assert b"Complete weekly review" in archive.data
+    assert b"1:05" in archive.data
+    assert b"Review" in archive.data
     assert client.get(f"/recordings/{recording_id}/transcript.txt").data == b"Transcript"
+    audio = client.get(f"/recordings/{recording_id}/download")
+    assert "Complete weekly review.wav" in audio.headers["Content-Disposition"]
     pdf = client.get(f"/recordings/{recording_id}/notes.pdf")
     assert pdf.status_code == 200
     assert pdf.mimetype == "application/pdf"

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from moment_backend.app import create_app
 from moment_backend.models import Recording
+from moment_backend.services import GeneratedRecording
 from moment_backend.worker import claim_next, process_recording, recover_interrupted_jobs
 from conftest import make_config
 
@@ -15,7 +16,7 @@ class FakeTranscriber:
 class FakeNotesGenerator:
     def generate(self, transcript):
         assert transcript == "Remember to order filters."
-        return "# Shopping\n\n- Order filters"
+        return GeneratedRecording("Order coffee filters", "- Order filters")
 
 
 def test_worker_transcribes_and_generates_notes(tmp_path):
@@ -40,7 +41,8 @@ def test_worker_transcribes_and_generates_notes(tmp_path):
         completed = database.get(Recording, recording_id)
         assert completed.status == "completed"
         assert completed.transcript == "Remember to order filters."
-        assert completed.notes_markdown == "# Shopping\n\n- Order filters"
+        assert completed.title == "Order coffee filters"
+        assert completed.notes_markdown == "- Order filters"
 
 
 def test_worker_recovers_jobs_left_by_a_restart(tmp_path):

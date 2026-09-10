@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import os
 import tempfile
+import wave
 from pathlib import Path
 from typing import BinaryIO
 
@@ -23,3 +24,15 @@ def save_upload(source: BinaryIO, destination_dir: Path, recording_id: str) -> t
     except Exception:
         Path(temp_file.name).unlink(missing_ok=True)
         raise
+
+
+def wav_duration_ms(audio_path: Path) -> int | None:
+    """Return a WAV's duration when its header is readable without decoding audio."""
+    try:
+        with wave.open(str(audio_path), "rb") as wav_file:
+            frame_rate = wav_file.getframerate()
+            if frame_rate <= 0:
+                return None
+            return round(wav_file.getnframes() * 1000 / frame_rate)
+    except (EOFError, wave.Error):
+        return None
